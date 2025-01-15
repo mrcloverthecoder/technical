@@ -226,8 +226,6 @@ HOOK(int32_t, __fastcall, GetHitState, 0x14026BF60, void* a1, void* a2, void* a3
 	return hit_state;
 };
 
-FUNCTION_PTR(void*, __fastcall, MMDrawTextA, 0x14027B160, float x, float y, int32_t res, int32_t layer, const char* text, bool x_advance, int32_t color, void* a8);
-
 HOOK(bool, __fastcall, TaskPvGameInit, 0x1405DA040, uint64_t a1)
 {
 	printf("[Technical] TaskPvGame::Init();\n");
@@ -241,8 +239,9 @@ HOOK(bool, __fastcall, TaskPvGameInit, 0x1405DA040, uint64_t a1)
 
 HOOK(bool, __fastcall, TaskPvGameCtrl, 0x1405DA060, uint64_t a1)
 {
-	diva::spr::CheckSprSetLoading(14028000);
-	diva::aet::CheckAetSetLoading(14029000);
+	if (!work.files_loaded)
+		work.files_loaded = !diva::spr::CheckSprSetLoading(14028000) && !diva::aet::CheckAetSetLoading(14029000);
+
 	return originalTaskPvGameCtrl(a1);
 }
 
@@ -365,27 +364,15 @@ static void CtrlBonusZoneUI(PVGamePvData* pv_data, TechnicalZone* tech_zone)
 
 struct CustomFontArgs
 {
-	uint32_t sprite_id = 0;
-	diva::vec2 glyph_size;
-	diva::vec2 size;
-	diva::vec3 pos;
-	int32_t index;
-	int32_t layer;
-	int32_t prio;
-	uint32_t color;
+	uint32_t sprite_id    = 0;
+	diva::vec2 glyph_size = { 0.0f, 0.0f};
+	diva::vec2 size = { 0.0f, 0.0f };
+	diva::vec3 pos  = { 0.0f, 0.0f, 0.0f };
+	int32_t index   = 0;
+	int32_t layer   = 0;
+	int32_t prio    = 7;
+	uint32_t color  = 0xFFFFFFFF;
 };
-
-static int32_t CountDecimalPlaces(int32_t value)
-{
-	int32_t num = 0;
-	while (value != 0)
-	{
-		num++;
-		value /= 10;
-	}
-
-	return num + 1;
-}
 
 static void DrawNotesNumber(int32_t value, int32_t max_digits, const CustomFontArgs* args)
 {

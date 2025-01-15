@@ -117,6 +117,7 @@ struct WorkData
 	size_t target_index = 0; // NOTE: Index of the target being currently polled by GetHitState
 	PVGamePvData* pv_data = nullptr;
 
+	bool files_loaded = false;
 	int32_t aet_state = AetState_Idle;
 	int32_t bonus_zone_aet = 0;
 	int32_t bonus_txt_aet = 0;
@@ -142,6 +143,7 @@ struct WorkData
 		ResetPv();
 		targets.clear();
 		tech_zones.clear();
+		files_loaded = false;
 	}
 };
 
