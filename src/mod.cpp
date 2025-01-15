@@ -1,4 +1,3 @@
-#include <stdio.h>
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <detours.h>
@@ -49,8 +48,6 @@ HOOK(uint64_t, __fastcall, ExecuteModeSelect, 0x1503B04A0, PVGamePvData* pv_data
 		int32_t difficulty = pv_data->script_buffer[pv_data->script_pos + 1];
 		int32_t mode = pv_data->script_buffer[pv_data->script_pos + 2];
 
-		printf("[Technical] pv_data:%p opc:%d (%d %d)\n", pv_data, opc, difficulty, mode);
-
 		if (CheckModeSelectDifficulty(difficulty))
 		{
 			if (mode == 8) // Technical Zone Start
@@ -58,8 +55,6 @@ HOOK(uint64_t, __fastcall, ExecuteModeSelect, 0x1503B04A0, PVGamePvData* pv_data
 				size_t index = 0;
 				for (auto& tech_zone : work.tech_zones)
 				{
-					printf("[Technical]\tmax:%llu index:%llu tzindex:%llu p:%p\n", work.tech_zones.size(), index, work.tech_zone_index, &tech_zone);
-					printf("[Technical]\t %llu / %llu / %llu\n", tech_zone.first_target_index, tech_zone.last_target_index, work.target_index);
 					if (index == work.tech_zone_index)
 					{
 						// NOTE: Reset technical zone state
@@ -95,9 +90,7 @@ HOOK(uint64_t, __fastcall, PVGamePvDataInit, 0x14024E3B0, PVGamePvData* pv_data,
 {
 	uint64_t ret = originalPVGamePvDataInit(pv_data, a2, a3);
 
-	printf("[Technical] Reset!\n");
 	work.Reset();
-
 	int64_t time = 0;
 	int32_t tft = 0;
 	int32_t index = 1;
@@ -255,7 +248,6 @@ HOOK(int32_t, __fastcall, GetHitState, 0x14026BF60, void* a1, void* a2, void* a3
 
 HOOK(bool, __fastcall, TaskPvGameInit, 0x1405DA040, uint64_t a1)
 {
-	printf("[Technical] TaskPvGame::Init();\n");
 	prj::string_view strv;
 	prj::string str;
 	diva::spr::LoadSprSet(14028000, &strv);
@@ -274,7 +266,6 @@ HOOK(bool, __fastcall, TaskPvGameCtrl, 0x1405DA060, uint64_t a1)
 
 HOOK(bool, __fastcall, TaskPvGameDest, 0x1405DA0A0, uint64_t a1)
 {
-	printf("[Technical] TaskPvGame::Dest();\n");
 	// NOTE: Call reset to make sure there are no Aet objects lying around before unloading the aet set.
 	work.Reset();
 	diva::spr::UnloadSprSet(14028000);
