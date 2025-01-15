@@ -4,6 +4,16 @@
 #include <detours.h>
 #include "mod.h"
 
+FUNCTION_PTR(void*, __fastcall, sub_14027DD90, 0x14027DD90);
+FUNCTION_PTR(int32_t, __fastcall, sub_140164470, 0x140164470, void* a1);
+
+static bool IsPvMode()
+{
+	void* v1 = sub_14027DD90();
+	int32_t state = sub_140164470(v1);
+	return state == 3 || state == 6;
+}
+
 enum HitState : int32_t
 {
 	HitState_Cool = 0,
@@ -411,7 +421,7 @@ static void DrawNotesNumber(int32_t value, int32_t max_digits, const CustomFontA
 
 HOOK(bool, __fastcall, TaskPvGameDisp, 0x1405DA090, uint64_t a1)
 {
-	if (work.pv_data != nullptr && work.tech_zone != nullptr)
+	if (work.pv_data != nullptr && work.tech_zone != nullptr && !IsPvMode())
 	{
 		CtrlBonusZoneUI(work.pv_data, work.tech_zone);
 
