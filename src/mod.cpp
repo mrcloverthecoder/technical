@@ -14,6 +14,17 @@ static bool IsPvMode()
 	return state == 3 || state == 6;
 }
 
+static bool CheckModeSelectDifficulty(int32_t bf)
+{
+	// NOTE: Get difficulty
+	int32_t* v1 = reinterpret_cast<int32_t*>(sub_14027DD90());
+	int32_t difficulty_index = v1[1];
+
+	if (difficulty_index >= 0 && difficulty_index < 5)
+		return (bf & (1 << difficulty_index)) != 0;
+	return false;
+}
+
 enum HitState : int32_t
 {
 	HitState_Cool = 0,
@@ -40,36 +51,39 @@ HOOK(uint64_t, __fastcall, ExecuteModeSelect, 0x1503B04A0, PVGamePvData* pv_data
 
 		printf("[Technical] pv_data:%p opc:%d (%d %d)\n", pv_data, opc, difficulty, mode);
 
-		if (mode == 8) // Technical Zone Start
+		if (CheckModeSelectDifficulty(difficulty))
 		{
-			size_t index = 0;
-			for (auto& tech_zone : work.tech_zones)
+			if (mode == 8) // Technical Zone Start
 			{
-				printf("[Technical]\tmax:%llu index:%llu tzindex:%llu p:%p\n", work.tech_zones.size(), index, work.tech_zone_index, &tech_zone);
-				printf("[Technical]\t %llu / %llu / %llu\n", tech_zone.first_target_index, tech_zone.last_target_index, work.target_index);
-				if (index == work.tech_zone_index)
+				size_t index = 0;
+				for (auto& tech_zone : work.tech_zones)
 				{
-					// NOTE: Reset technical zone state
-					work.tech_zone = &tech_zone;
-					work.tech_zone->targets_hit = 0;
-					work.tech_zone->failed = false;
+					printf("[Technical]\tmax:%llu index:%llu tzindex:%llu p:%p\n", work.tech_zones.size(), index, work.tech_zone_index, &tech_zone);
+					printf("[Technical]\t %llu / %llu / %llu\n", tech_zone.first_target_index, tech_zone.last_target_index, work.target_index);
+					if (index == work.tech_zone_index)
+					{
+						// NOTE: Reset technical zone state
+						work.tech_zone = &tech_zone;
+						work.tech_zone->targets_hit = 0;
+						work.tech_zone->failed = false;
 
-					work.aet_state = AetState_Start;
-					work.tech_zone_index++;
-					break;
+						work.aet_state = AetState_Start;
+						work.tech_zone_index++;
+						break;
+					}
+
+					index++;
 				}
-
-				index++;
 			}
-		}
-		else if (mode == 9) // Technical Zone End
-		{
-			if (work.tech_zone != nullptr)
+			else if (mode == 9) // Technical Zone End
 			{
-				if (work.tech_zone->IsSuccess())
-					work.aet_state = AetState_Success;
-				else
-					work.aet_state = AetState_FailOut;
+				if (work.tech_zone != nullptr)
+				{
+					if (work.tech_zone->IsSuccess())
+						work.aet_state = AetState_Success;
+					else
+						work.aet_state = AetState_FailOut;
+				}
 			}
 		}
 	}
@@ -121,19 +135,22 @@ HOOK(uint64_t, __fastcall, PVGamePvDataInit, 0x14024E3B0, PVGamePvData* pv_data,
 
 			break;
 		case 26: // MODE_SELECT
-			if (pv_data->script_buffer[index + 2] == 8) // Technical Zone Start
+			if (CheckModeSelectDifficulty(pv_data->script_buffer[index + 1]))
 			{
-				tech_zone = &work.tech_zones.emplace_back();
-				tech_zone->time_begin = time;
-				tech_zone->first_target_index = 0xFFFFFFFF;
-				tech_zone->last_target_index = 0xFFFFFFFF;
-			}
-			else if (pv_data->script_buffer[index + 2] == 9) // Technical Zone End
-			{
-				if (tech_zone != nullptr)
-					tech_zone->time_end = time;
+				if (pv_data->script_buffer[index + 2] == 8) // Technical Zone Start
+				{
+					tech_zone = &work.tech_zones.emplace_back();
+					tech_zone->time_begin = time;
+					tech_zone->first_target_index = 0xFFFFFFFF;
+					tech_zone->last_target_index = 0xFFFFFFFF;
+				}
+				else if (pv_data->script_buffer[index + 2] == 9) // Technical Zone End
+				{
+					if (tech_zone != nullptr)
+						tech_zone->time_end = time;
 
-				tech_zone = nullptr;
+					tech_zone = nullptr;
+				}
 			}
 
 			break;
