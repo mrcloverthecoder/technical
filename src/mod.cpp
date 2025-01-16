@@ -3,25 +3,45 @@
 #include <detours.h>
 #include "mod.h"
 
-FUNCTION_PTR(void*, __fastcall, sub_14027DD90, 0x14027DD90);
-FUNCTION_PTR(int32_t, __fastcall, sub_140164470, 0x140164470, void* a1);
-
-static bool IsPvMode()
+struct PvGameplayInfo
 {
-	void* v1 = sub_14027DD90();
-	int32_t state = sub_140164470(v1);
-	return state == 3 || state == 6;
+	int32_t type;
+	int32_t difficulty;
+};
+
+FUNCTION_PTR(PvGameplayInfo*, __fastcall, GetPvGameplayInfo, 0x14027DD90);
+FUNCTION_PTR(bool, __fastcall, IsPracticeMode, 0x1401E7B90);
+
+static bool ShouldEnableTechZones()
+{
+	// NOTE: I'm currently disabling the Technical Zones in practice mode until I figure out
+	//       how to handle the practice mode rewinding feature.
+
+	int32_t type = GetPvGameplayInfo()->type;
+	return (type != 3 && type != 6) && !IsPracticeMode();
 }
 
 static bool CheckModeSelectDifficulty(int32_t bf)
 {
-	// NOTE: Get difficulty
-	int32_t* v1 = reinterpret_cast<int32_t*>(sub_14027DD90());
-	int32_t difficulty_index = v1[1];
-
+	int32_t difficulty_index = GetPvGameplayInfo()->difficulty;
 	if (difficulty_index >= 0 && difficulty_index < 5)
 		return (bf & (1 << difficulty_index)) != 0;
 	return false;
+}
+
+static bool GetModeSelectData(int32_t op, PVGamePvData* pv_data, int32_t offset, int32_t* diff, int32_t* mode)
+{
+	if (op == 82) // EDIT_MODE_SELECT
+	{
+		*diff = 31;
+		*mode = pv_data->script_buffer[offset + 1];
+		return true;
+	}
+
+	// MODE_SELECT
+	*diff = pv_data->script_buffer[offset + 1];
+	*mode = pv_data->script_buffer[offset + 2];
+	return CheckModeSelectDifficulty(*diff);
 }
 
 enum HitState : int32_t
@@ -43,12 +63,12 @@ enum HitState : int32_t
 
 HOOK(uint64_t, __fastcall, ExecuteModeSelect, 0x1503B04A0, PVGamePvData* pv_data, int32_t opc)
 {
-	if (opc == 26)
+	if (ShouldEnableTechZones())
 	{
-		int32_t difficulty = pv_data->script_buffer[pv_data->script_pos + 1];
-		int32_t mode = pv_data->script_buffer[pv_data->script_pos + 2];
+		int32_t difficulty = 0;
+		int32_t mode = 0;
 
-		if (CheckModeSelectDifficulty(difficulty))
+		if (GetModeSelectData(opc, pv_data, pv_data->script_pos, &difficulty, &mode))
 		{
 			if (mode == 8) // Technical Zone Start
 			{
@@ -90,6 +110,9 @@ HOOK(uint64_t, __fastcall, PVGamePvDataInit, 0x14024E3B0, PVGamePvData* pv_data,
 {
 	uint64_t ret = originalPVGamePvDataInit(pv_data, a2, a3);
 
+	if (!ShouldEnableTechZones())
+		return ret;
+
 	work.Reset();
 	int64_t time = 0;
 	int32_t tft = 0;
@@ -128,16 +151,21 @@ HOOK(uint64_t, __fastcall, PVGamePvDataInit, 0x14024E3B0, PVGamePvData* pv_data,
 
 			break;
 		case 26: // MODE_SELECT
-			if (CheckModeSelectDifficulty(pv_data->script_buffer[index + 1]))
+		case 82: // EDIT_MODE_SELECT
+		{
+			int32_t diff = 0;
+			int32_t mode = 0;
+
+			if (GetModeSelectData(pv_data->script_buffer[index], pv_data, index, &diff, &mode))
 			{
-				if (pv_data->script_buffer[index + 2] == 8) // Technical Zone Start
+				if (mode == 8) // Technical Zone Start
 				{
 					tech_zone = &work.tech_zones.emplace_back();
 					tech_zone->time_begin = time;
 					tech_zone->first_target_index = 0xFFFFFFFF;
 					tech_zone->last_target_index = 0xFFFFFFFF;
 				}
-				else if (pv_data->script_buffer[index + 2] == 9) // Technical Zone End
+				else if (mode == 9) // Technical Zone End
 				{
 					if (tech_zone != nullptr)
 						tech_zone->time_end = time;
@@ -147,6 +175,7 @@ HOOK(uint64_t, __fastcall, PVGamePvDataInit, 0x14024E3B0, PVGamePvData* pv_data,
 			}
 
 			break;
+		}
 		case 28: // BAR_TIME_SET
 		{
 			int32_t bpm = pv_data->script_buffer[index + 1];
@@ -208,18 +237,25 @@ HOOK(uint64_t, __fastcall, PVGamePvDataInit, 0x14024E3B0, PVGamePvData* pv_data,
 
 HOOK(uint64_t, __fastcall, PVGamePvDataCtrl, 0x14024EB50, PVGamePvData* pv_data, float a2, int64_t a3, char a4)
 {
-	// HACK: Reset Pv data if script read head position is before the first TIME command. This is hacky,
-	//       but does the job for resetting on retry.
-	if (pv_data->script_pos < 2)
-		work.ResetPv();
+	if (ShouldEnableTechZones())
+	{
+		// HACK: Reset Pv data if script read head position is before the first TIME command. This is hacky,
+		//       but does the job for resetting on retry.
+		if (pv_data->script_pos < 2)
+			work.ResetPv();
 
-	work.pv_data = pv_data;
+		work.pv_data = pv_data;
+	}
+
 	return originalPVGamePvDataCtrl(pv_data, a2, a3, a4);
 }
 
 HOOK(int32_t, __fastcall, GetHitState, 0x14026BF60, void* a1, void* a2, void* a3, void* a4, int32_t a5, void* a6, int32_t* multi_count, void* a8, void* a9, void* a10, bool* slide, bool* slide_chain, bool* slide_chain_start, bool* slide_chain_max, bool* slide_chain_continues, void* a16)
 {
 	int32_t hit_state = originalGetHitState(a1, a2, a3, a4, a5, a6, multi_count, a8, a9, a10, slide, slide_chain, slide_chain_start, slide_chain_max, slide_chain_continues, a16);
+
+	if (!ShouldEnableTechZones())
+		return hit_state;
 	
 	if (hit_state != HitState_None)
 	{
@@ -248,17 +284,20 @@ HOOK(int32_t, __fastcall, GetHitState, 0x14026BF60, void* a1, void* a2, void* a3
 
 HOOK(bool, __fastcall, TaskPvGameInit, 0x1405DA040, uint64_t a1)
 {
-	prj::string_view strv;
-	prj::string str;
-	diva::spr::LoadSprSet(14028000, &strv);
-	diva::aet::LoadAetSet(14029000, &str);
+	if (ShouldEnableTechZones())
+	{
+		prj::string_view strv;
+		prj::string str;
+		diva::spr::LoadSprSet(14028000, &strv);
+		diva::aet::LoadAetSet(14029000, &str);
+	}
 
 	return originalTaskPvGameInit(a1);
 }
 
 HOOK(bool, __fastcall, TaskPvGameCtrl, 0x1405DA060, uint64_t a1)
 {
-	if (!work.files_loaded)
+	if (!work.files_loaded && ShouldEnableTechZones())
 		work.files_loaded = !diva::spr::CheckSprSetLoading(14028000) && !diva::aet::CheckAetSetLoading(14029000);
 
 	return originalTaskPvGameCtrl(a1);
@@ -266,10 +305,15 @@ HOOK(bool, __fastcall, TaskPvGameCtrl, 0x1405DA060, uint64_t a1)
 
 HOOK(bool, __fastcall, TaskPvGameDest, 0x1405DA0A0, uint64_t a1)
 {
-	// NOTE: Call reset to make sure there are no Aet objects lying around before unloading the aet set.
-	work.Reset();
-	diva::spr::UnloadSprSet(14028000);
-	diva::aet::UnloadAetSet(14029000);
+	if (ShouldEnableTechZones())
+	{
+		// NOTE: Call reset to make sure there are no Aet objects lying around before unloading the aet set.
+		work.Reset();
+		diva::spr::UnloadSprSet(14028000);
+		diva::aet::UnloadAetSet(14029000);
+		work.files_loaded = false;
+	}
+
 	return originalTaskPvGameDest(a1);
 }
 
@@ -429,7 +473,7 @@ static void DrawNotesNumber(int32_t value, int32_t max_digits, const CustomFontA
 
 HOOK(bool, __fastcall, TaskPvGameDisp, 0x1405DA090, uint64_t a1)
 {
-	if (work.pv_data != nullptr && work.tech_zone != nullptr && !IsPvMode())
+	if (work.pv_data != nullptr && work.tech_zone != nullptr && ShouldEnableTechZones())
 	{
 		CtrlBonusZoneUI(work.pv_data, work.tech_zone);
 
