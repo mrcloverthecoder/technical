@@ -3,6 +3,8 @@
 #include <detours.h>
 #include "mod.h"
 
+const int64_t LeniencyWindow = 10000;
+
 struct PvGameplayInfo
 {
 	int32_t type;
@@ -50,16 +52,36 @@ enum HitState : int32_t
 	HitState_Fine = 1,
 	HitState_Safe = 2,
 	HitState_Sad  = 3,
-	HitState_RedWrong   = 4,
-	HitState_GreyWrong  = 5,
-	HitState_GreenWrong = 6,
-	HitState_BlueWrong  = 7,
-	HitState_Worst      = 8,
-	HitState_CoolMulti  = 9,
-	HitState_FineMulti  = 10,
-	HitState_SafeMulti  = 11,
-	HitState_None       = 21
+	HitState_RedWrong    = 4,
+	HitState_GreyWrong   = 5,
+	HitState_GreenWrong  = 6,
+	HitState_BlueWrong   = 7,
+	HitState_Worst       = 8,
+	HitState_CoolDouble  = 9,
+	HitState_FineDouble  = 10,
+	HitState_SafeDouble  = 11,
+	HitState_SadDouble   = 12,
+	HitState_CoolTriple  = 13,
+	HitState_FineTriple  = 14,
+	HitState_SafeTriple  = 15,
+	HitState_SadTriple   = 16,
+	HitState_CoolQuad    = 17,
+	HitState_FineQuad    = 18,
+	HitState_SafeQuad    = 19,
+	HitState_SadQuad     = 20,
+	HitState_None        = 21
 };
+
+static int32_t GetHitStateBasic(int32_t org)
+{
+	if (org >= HitState_CoolDouble && org <= HitState_SadDouble)
+		return org - 9;
+	else if (org >= HitState_CoolTriple && org <= HitState_SadTriple)
+		return org - 13;
+	else if (org >= HitState_CoolQuad && org <= HitState_SadQuad)
+		return org - 17;
+	return org;
+}
 
 HOOK(uint64_t, __fastcall, ExecuteModeSelect, 0x1503B04A0, PVGamePvData* pv_data, int32_t opc)
 {
@@ -213,9 +235,9 @@ HOOK(uint64_t, __fastcall, PVGamePvDataInit, 0x14024E3B0, PVGamePvData* pv_data,
 
 			if (!is_mini_slide)
 			{
-				// TODO: Take in account the timing window? Not sure if it's necessary.
-				int64_t hit_time = grp.targets[0].hit_time;
-				if (hit_time >= zone.time_begin && hit_time < zone.time_end)
+				int64_t min_time = grp.targets[0].hit_time - LeniencyWindow;
+				int64_t max_time = grp.targets[0].hit_time + LeniencyWindow;
+				if (min_time >= zone.time_begin && max_time < zone.time_end)
 				{
 					if (zone.first_target_index == 0xFFFFFFFF)
 						zone.first_target_index = target_index;
@@ -264,7 +286,7 @@ HOOK(int32_t, __fastcall, GetHitState, 0x14026BF60, void* a1, void* a2, void* a3
 			TechnicalZone* zone = work.tech_zone;
 			if (work.target_index >= zone->first_target_index && work.target_index <= zone->last_target_index)
 			{
-				if (hit_state >= HitState_Sad && hit_state <= HitState_Worst)
+				if (GetHitStateBasic(hit_state) >= HitState_Safe && GetHitStateBasic(hit_state) <= HitState_Worst)
 					work.tech_zone->failed = true;
 
 				if (!work.tech_zone->failed)
