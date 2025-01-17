@@ -99,9 +99,11 @@ enum AetMode : int32_t
 {
 	AetMode_F    = 0,
 	AetMode_F2nd = 1,
+	AetMode_Max,      // NOTE: Move this down as other UIs are implemented.
+
 	AetMode_X    = 2,
 	AetMode_FT   = 3,
-	AetMode_MM   = 4
+	AetMode_MM   = 4,
 };
 
 struct WorkData
@@ -131,6 +133,7 @@ struct WorkData
 	int32_t bonus_zone_aet = 0;
 	int32_t bonus_txt_aet = 0;
 
+	int32_t default_style = AetMode_F;
 	int32_t aet_mode = AetMode_F;
 
 	inline void ResetAet()

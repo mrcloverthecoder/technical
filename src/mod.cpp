@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <detours.h>
 #include "mod.h"
+#include "thirdparty/toml.hpp"
 
 // NOTE: Each index corresponds to an `AetMode` enum value
 //
@@ -549,10 +550,27 @@ HOOK(bool, __fastcall, TaskPvGameDisp, 0x1405DA090, uint64_t a1)
 	return originalTaskPvGameDisp(a1);
 }
 
+static void LoadSettings()
+{
+	toml::table tbl = toml::parse_file("config.toml");
+	if (toml::node* n = tbl.get("settings"); n != nullptr && n->is_table())
+	{
+		toml::table* settings = n->as_table();
+
+		if (n = settings->get("style"); n != nullptr && n->is_integer())
+		{
+			int32_t style = n->value_or<int32_t>(0);
+			work.default_style = style < 0 || style >= AetMode_Max ? 0 : style;
+			work.aet_mode = work.default_style;
+		}
+	}
+}
+
 extern "C"
 {
 	void __declspec(dllexport) Init()
 	{
+		LoadSettings();
 		INSTALL_HOOK(ExecuteModeSelect);
 		INSTALL_HOOK(PVGamePvDataInit);
 		INSTALL_HOOK(PVGamePvDataCtrl);
