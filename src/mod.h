@@ -95,6 +95,15 @@ enum AetState : int32_t
 	AetState_End = 9
 };
 
+enum AetMode : int32_t
+{
+	AetMode_F    = 0,
+	AetMode_F2nd = 1,
+	AetMode_X    = 2,
+	AetMode_FT   = 3,
+	AetMode_MM   = 4
+};
+
 struct WorkData
 {
 	struct Target
@@ -121,6 +130,8 @@ struct WorkData
 	int32_t aet_state = AetState_Idle;
 	int32_t bonus_zone_aet = 0;
 	int32_t bonus_txt_aet = 0;
+
+	int32_t aet_mode = AetMode_F;
 
 	inline void ResetAet()
 	{

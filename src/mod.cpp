@@ -3,6 +3,14 @@
 #include <detours.h>
 #include "mod.h"
 
+// NOTE: Each index corresponds to an `AetMode` enum value
+//
+static const uint32_t AetSetIDs[2]  = { 14029010, 14029000 };
+static const uint32_t AetGamIDs[2]  = { 14029011, 14029001 };
+static const uint32_t SprSetIDs[2]  = { 14028010, 14028000 };
+static const uint32_t SprTchznCmnID = 14028050;
+static const uint32_t FontSpriteIDs[2] = { 1973610232, 1973610232 };
+
 const int64_t LeniencyWindow = 10000;
 
 struct PvGameplayInfo
@@ -310,8 +318,9 @@ HOOK(bool, __fastcall, TaskPvGameInit, 0x1405DA040, uint64_t a1)
 	{
 		prj::string_view strv;
 		prj::string str;
-		diva::spr::LoadSprSet(14028000, &strv);
-		diva::aet::LoadAetSet(14029000, &str);
+		diva::spr::LoadSprSet(SprSetIDs[work.aet_mode], &strv);
+		diva::spr::LoadSprSet(SprTchznCmnID, &strv);
+		diva::aet::LoadAetSet(AetSetIDs[work.aet_mode], &str);
 	}
 
 	return originalTaskPvGameInit(a1);
@@ -320,7 +329,11 @@ HOOK(bool, __fastcall, TaskPvGameInit, 0x1405DA040, uint64_t a1)
 HOOK(bool, __fastcall, TaskPvGameCtrl, 0x1405DA060, uint64_t a1)
 {
 	if (!work.files_loaded && ShouldEnableTechZones())
-		work.files_loaded = !diva::spr::CheckSprSetLoading(14028000) && !diva::aet::CheckAetSetLoading(14029000);
+	{
+		work.files_loaded = !diva::spr::CheckSprSetLoading(SprSetIDs[work.aet_mode]) &&
+			!diva::spr::CheckSprSetLoading(SprTchznCmnID) &&
+			!diva::aet::CheckAetSetLoading(AetSetIDs[work.aet_mode]);
+	}
 
 	return originalTaskPvGameCtrl(a1);
 }
@@ -331,15 +344,14 @@ HOOK(bool, __fastcall, TaskPvGameDest, 0x1405DA0A0, uint64_t a1)
 	{
 		// NOTE: Call reset to make sure there are no Aet objects lying around before unloading the aet set.
 		work.Reset();
-		diva::spr::UnloadSprSet(14028000);
-		diva::aet::UnloadAetSet(14029000);
+		diva::spr::UnloadSprSet(SprSetIDs[work.aet_mode]);
+		diva::spr::UnloadSprSet(SprTchznCmnID);
+		diva::aet::UnloadAetSet(AetSetIDs[work.aet_mode]);
 		work.files_loaded = false;
 	}
 
 	return originalTaskPvGameDest(a1);
 }
-
-const uint32_t AetGamTchznMainID = 140290001;
 
 static void CtrlBonusZoneUI(PVGamePvData* pv_data, TechnicalZone* tech_zone)
 {
@@ -355,7 +367,7 @@ static void CtrlBonusZoneUI(PVGamePvData* pv_data, TechnicalZone* tech_zone)
 	case AetState_Start:
 		if (diva::aet::StopOnEnded(&work.bonus_zone_aet))
 		{
-			diva::aet::CreateAetArgs(&args, AetGamTchznMainID, "bonus_zone", 4);
+			diva::aet::CreateAetArgs(&args, AetGamIDs[work.aet_mode], "bonus_zone", 4);
 			args.start_marker = "";
 			args.end_marker = "loop_start";
 			args.flags = 0x20000;
@@ -363,7 +375,7 @@ static void CtrlBonusZoneUI(PVGamePvData* pv_data, TechnicalZone* tech_zone)
 
 			// NOTE: Create text aet object
 			diva::aet::Stop(&work.bonus_txt_aet);
-			diva::aet::CreateAetArgs(&txt_args, AetGamTchznMainID, "bonus_start_txt", 4);
+			diva::aet::CreateAetArgs(&txt_args, AetGamIDs[work.aet_mode], "bonus_start_txt", 4);
 			args.flags = 0x20000;
 			work.bonus_txt_aet = diva::aet::Play(&txt_args, 0);
 
@@ -373,7 +385,7 @@ static void CtrlBonusZoneUI(PVGamePvData* pv_data, TechnicalZone* tech_zone)
 	case AetState_Loop:
 		if (diva::aet::StopOnEnded(&work.bonus_zone_aet))
 		{
-			diva::aet::CreateAetArgs(&args, AetGamTchznMainID, "bonus_zone", 4);
+			diva::aet::CreateAetArgs(&args, AetGamIDs[work.aet_mode], "bonus_zone", 4);
 			args.start_marker = "loop_start";
 			args.end_marker = "loop_end";
 			// NOTE: Even though this is a loop, I don't use the LOOP flag here because I need `GetEnded` to
@@ -390,7 +402,7 @@ static void CtrlBonusZoneUI(PVGamePvData* pv_data, TechnicalZone* tech_zone)
 	case AetState_FailIn:
 		if (diva::aet::StopOnEnded(&work.bonus_zone_aet))
 		{
-			diva::aet::CreateAetArgs(&args, AetGamTchznMainID, "bonus_zone", 4);
+			diva::aet::CreateAetArgs(&args, AetGamIDs[work.aet_mode], "bonus_zone", 4);
 			args.start_marker = "failed_start";
 			args.end_marker = "failed_loop_start";
 			args.flags = 0x20000;
@@ -402,7 +414,7 @@ static void CtrlBonusZoneUI(PVGamePvData* pv_data, TechnicalZone* tech_zone)
 	case AetState_FailLoop:
 		if (diva::aet::StopOnEnded(&work.bonus_zone_aet))
 		{
-			diva::aet::CreateAetArgs(&args, AetGamTchznMainID, "bonus_zone", 4);
+			diva::aet::CreateAetArgs(&args, AetGamIDs[work.aet_mode], "bonus_zone", 4);
 			args.start_marker = "failed_loop_start";
 			args.end_marker = "failed_loop_start";
 			args.flags = 0x20000;
@@ -412,14 +424,14 @@ static void CtrlBonusZoneUI(PVGamePvData* pv_data, TechnicalZone* tech_zone)
 	case AetState_FailOut:
 		if (diva::aet::StopOnEnded(&work.bonus_zone_aet))
 		{
-			diva::aet::CreateAetArgs(&args, AetGamTchznMainID, "bonus_zone", 4);
+			diva::aet::CreateAetArgs(&args, AetGamIDs[work.aet_mode], "bonus_zone", 4);
 			args.start_marker = "failed_loop_end";
 			args.end_marker = "failed_end";
 			args.flags = 0x20000;
 			work.bonus_zone_aet = diva::aet::Play(&args, 0);
 
 			diva::aet::Stop(&work.bonus_txt_aet);
-			diva::aet::CreateAetArgs(&txt_args, AetGamTchznMainID, "bonus_end_txt", 4);
+			diva::aet::CreateAetArgs(&txt_args, AetGamIDs[work.aet_mode], "bonus_end_txt", 4);
 			txt_args.flags = 0x20000;
 			work.bonus_txt_aet = diva::aet::Play(&txt_args, 0);
 
@@ -429,14 +441,14 @@ static void CtrlBonusZoneUI(PVGamePvData* pv_data, TechnicalZone* tech_zone)
 	case AetState_Success:
 		if (diva::aet::StopOnEnded(&work.bonus_zone_aet))
 		{
-			diva::aet::CreateAetArgs(&args, AetGamTchznMainID, "bonus_zone", 4);
+			diva::aet::CreateAetArgs(&args, AetGamIDs[work.aet_mode], "bonus_zone", 4);
 			args.start_marker = "clear_start";
 			args.end_marker = "clear_end";
 			args.flags = 0x20000;
 			work.bonus_zone_aet = diva::aet::Play(&args, 0);
 
 			diva::aet::Stop(&work.bonus_txt_aet);
-			diva::aet::CreateAetArgs(&txt_args, AetGamTchznMainID, "bonus_complete_txt", 4);
+			diva::aet::CreateAetArgs(&txt_args, AetGamIDs[work.aet_mode], "bonus_complete_txt", 4);
 			args.flags = 0x20000;
 			work.bonus_txt_aet = diva::aet::Play(&txt_args, 0);
 
@@ -455,6 +467,7 @@ struct CustomFontArgs
 	int32_t index   = 0;
 	int32_t layer   = 0;
 	int32_t prio    = 7;
+	int32_t res     = 14;
 	uint32_t color  = 0xFFFFFFFF;
 };
 
@@ -471,8 +484,8 @@ static void DrawNotesNumber(int32_t value, int32_t max_digits, const CustomFontA
 
 		diva::SprArgs spr_args;
 		spr_args.id = args->sprite_id;
-		spr_args.resolution_mode_screen = 14;
-		spr_args.resolution_mode_sprite = 14;
+		spr_args.resolution_mode_screen = args->res;
+		spr_args.resolution_mode_sprite = args->res;
 		spr_args.index = args->index;
 		spr_args.layer = args->layer;
 		spr_args.priority = args->prio;
@@ -507,14 +520,22 @@ HOOK(bool, __fastcall, TaskPvGameDisp, 0x1405DA090, uint64_t a1)
 			if (auto it = comp.find("p_notes_num_rt"); it != comp.end())
 			{
 				CustomFontArgs args;
-				args.sprite_id  = 2951910002;
+				args.sprite_id  = FontSpriteIDs[work.aet_mode];
 				args.glyph_size = { 30.0f, 32.0f };
 				args.size       = { 45.0f, 48.0f };
 				args.pos        = it->second.position;
 				args.index      = 0;
 				args.layer      = 0;
 				args.prio       = 8;
+				args.res        = 14;
 				args.color      = work.tech_zone->failed ? 0xFF7F7F7F : 0xFFFFFFFF;
+
+				// NOTE: The F-style AET is HDTV720, not HDTV1080.
+				if (work.aet_mode == AetMode_F)
+				{
+					args.pos.x *= 1.5f;
+					args.pos.y *= 1.5f;
+				}
 
 				int32_t number = work.tech_zone->GetRemaining();
 				if (number > 999)
