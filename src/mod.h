@@ -129,6 +129,7 @@ struct WorkData
 	PVGamePvData* pv_data = nullptr;
 
 	bool files_loaded = false;
+	bool song_failed = false;
 	int32_t aet_state = AetState_Idle;
 	int32_t bonus_zone_aet = 0;
 	int32_t bonus_txt_aet = 0;
@@ -150,6 +151,7 @@ struct WorkData
 		tech_zone_index = 0;
 		target_index = 0;
 		pv_data = nullptr;
+		song_failed = false;
 	}
 
 	inline void Reset()

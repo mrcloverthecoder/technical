@@ -22,6 +22,8 @@ struct PvGameplayInfo
 
 FUNCTION_PTR(PvGameplayInfo*, __fastcall, GetPvGameplayInfo, 0x14027DD90);
 FUNCTION_PTR(bool, __fastcall, IsPracticeMode, 0x1401E7B90);
+// NOTE: Returns some PV struct... Looks like it's the big one, parent of all the smaller bits.
+FUNCTION_PTR(void*, __fastcall, sub_140266720, 0x140266720);
 
 static bool ShouldEnableTechZones()
 {
@@ -38,6 +40,11 @@ static bool CheckModeSelectDifficulty(int32_t bf)
 	if (difficulty_index >= 0 && difficulty_index < 5)
 		return (bf & (1 << difficulty_index)) != 0;
 	return false;
+}
+
+static int32_t GetLifeValue()
+{
+	return *(reinterpret_cast<int32_t*>(sub_140266720()) + 46221);
 }
 
 static bool GetModeSelectData(int32_t op, PVGamePvData* pv_data, int32_t offset, int32_t* diff, int32_t* mode)
@@ -511,6 +518,20 @@ HOOK(bool, __fastcall, TaskPvGameDisp, 0x1405DA090, uint64_t a1)
 {
 	if (work.pv_data != nullptr && work.tech_zone != nullptr && ShouldEnableTechZones())
 	{
+		// NOTE: Check if the Technical Zone is still in it's time range
+		int64_t cur_time = work.pv_data->cur_time / 10000;
+
+		if (cur_time >= work.tech_zone->time_begin && cur_time <= work.tech_zone->time_end)
+		{
+			// NOTE: Do the out animation if the player fails the song, to prevent it from staying
+			//       stuck in AetState_FailLoop in the results screen.
+			if (GetLifeValue() == 0 && !work.song_failed)
+			{
+				work.aet_state = AetState_FailOut;
+				work.song_failed = true;
+			}
+		}
+
 		CtrlBonusZoneUI(work.pv_data, work.tech_zone);
 
 		if (work.bonus_zone_aet != 0)
