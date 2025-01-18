@@ -344,6 +344,4 @@ namespace diva
 		// NOTE: Returns a pointer to a struct that describes DSC opcode <id>
 		inline FUNCTION_PTR(const OpcodeInfo*, __fastcall, GetOpcodeInfo, 0x14024DCA0, int32_t id);
 	}
-
-	FUNCTION_PTR_H(diva::SprArgs*, __fastcall, DrawRectangle, Rect* rect, int32_t res, int32_t layer, uint32_t color, int32_t prio);
 }

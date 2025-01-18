@@ -10,8 +10,6 @@ namespace prj
 
 namespace diva
 {
-	FUNCTION_PTR(diva::SprArgs*, __fastcall, DrawRectangle, 0x1405B4D40, Rect* rect, int32_t res, int32_t layer, uint32_t color, int32_t prio);
-
 	FUNCTION_PTR(AetArgs*, __fastcall, CreateAetArgsOrg, 0x14028D560, AetArgs*, uint32_t, const char*, int32_t, int32_t);
 	FUNCTION_PTR(void, __fastcall, StopAetOrg, 0x1402CA330, int32_t* id);
 	FUNCTION_PTR(SprArgs*, __fastcall, DefaultSprArgs, 0x1405B78D0, SprArgs* args);
