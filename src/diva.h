@@ -6,6 +6,38 @@
 #include <stdint.h>
 #include "Helpers.h"
 
+// 
+//
+enum HitState : int32_t
+{
+	HitState_Cool = 0,
+	HitState_Fine = 1,
+	HitState_Safe = 2,
+	HitState_Sad = 3,
+	HitState_RedWrong = 4,
+	HitState_GreyWrong = 5,
+	HitState_GreenWrong = 6,
+	HitState_BlueWrong = 7,
+	HitState_Worst = 8,
+	HitState_CoolDouble = 9,
+	HitState_FineDouble = 10,
+	HitState_SafeDouble = 11,
+	HitState_SadDouble = 12,
+	HitState_CoolTriple = 13,
+	HitState_FineTriple = 14,
+	HitState_SafeTriple = 15,
+	HitState_SadTriple = 16,
+	HitState_CoolQuad = 17,
+	HitState_FineQuad = 18,
+	HitState_SafeQuad = 19,
+	HitState_SadQuad = 20,
+	HitState_None = 21
+};
+
+//
+//
+//
+
 namespace prj
 {
 	FUNCTION_PTR_H(void*, __fastcall, operatorNew, size_t);
@@ -286,6 +318,13 @@ namespace diva
 
 	using AetComposition = std::map<prj::string, AetLayout, std::less<prj::string>, prj::Allocator<std::pair<const prj::string, AetLayout>>>;
 
+	// NOTE: Koren named this struct "struc_14" so I have no idea what it's real name is. But PvGameplayInfo sounds fitting.
+	struct PvGameplayInfo
+	{
+		int32_t type;
+		int32_t difficulty;
+	};
+
 	namespace aet
 	{
 		// NOTE: Queues AetSet file to be loaded
@@ -302,6 +341,7 @@ namespace diva
 		inline FUNCTION_PTR(void, __fastcall, GetComposition, 0x1402CA670, AetComposition* comp, int32_t id);
 
 		void CreateAetArgs(AetArgs* args, uint32_t scene_id, const char* layer_name, int32_t prio);
+		void CreateAetArgs(AetArgs* args, uint32_t scene_id, const char* layer_name, int32_t flags, int32_t layer, int32_t prio, const char* start_marker, const char* end_marker);
 
 		// NOTE: Stops (removes, not pause!) an Aet layer object created by `diva::aet::Play`
 		void Stop(int32_t id);
@@ -344,4 +384,8 @@ namespace diva
 		// NOTE: Returns a pointer to a struct that describes DSC opcode <id>
 		inline FUNCTION_PTR(const OpcodeInfo*, __fastcall, GetOpcodeInfo, 0x14024DCA0, int32_t id);
 	}
+
+	inline FUNCTION_PTR(PvGameplayInfo*, __fastcall, GetPvGameplayInfo, 0x14027DD90);
+	inline FUNCTION_PTR(void*, __fastcall, GetPvGameData, 0x140266720);
+	inline FUNCTION_PTR(bool, __fastcall, IsPracticeMode, 0x1401E7B90);
 }

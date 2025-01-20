@@ -46,6 +46,15 @@ namespace diva
 		CreateAetArgsOrg(args, scene_id, layer_name, prio, 0);
 	}
 
+	void aet::CreateAetArgs(AetArgs* args, uint32_t scene_id, const char* layer_name, int32_t flags, int32_t layer, int32_t prio, const char* start_marker, const char* end_marker)
+	{
+		CreateAetArgs(args, scene_id, layer_name, prio);
+		args->flags = flags;
+		args->layer = layer;
+		args->start_marker = start_marker;
+		args->end_marker = end_marker;
+	}
+
 	void aet::Stop(int32_t id)
 	{
 		if (id != 0)

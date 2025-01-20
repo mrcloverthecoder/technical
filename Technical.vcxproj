@@ -162,13 +162,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\custom_font.cpp" />
     <ClCompile Include="src\diva.cpp" />
+    <ClCompile Include="src\dsc.cpp" />
     <ClCompile Include="src\mod.cpp" />
+    <ClCompile Include="src\tech_zone.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\custom_font.h" />
     <ClInclude Include="src\diva.h" />
+    <ClInclude Include="src\dsc.h" />
     <ClInclude Include="src\helpers.h" />
     <ClInclude Include="src\mod.h" />
+    <ClInclude Include="src\tech_zone.h" />
     <ClInclude Include="src\thirdparty\toml.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
