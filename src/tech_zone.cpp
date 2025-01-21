@@ -82,7 +82,12 @@ void TechZoneManager::Ctrl(PVGamePvData* pv_data)
 		if (pv_data->cur_time <= tech_zone->end_time)
 		{
 			int32_t life = *(reinterpret_cast<int32_t*>(diva::GetPvGameData()) + 46221);
-			if (life == 0 && aet_state == AetState_FailLoop)
+			// TODO: Fix technical zone immediately failing if your life is 0 when it
+			//       begins in no fail mode.
+			// 
+			// bool no_fail = *(reinterpret_cast<int8_t*>(diva::GetPvGameData()) + 0x2D31D);
+
+			if (life == 0 /*&& !no_fail*/ && aet_state == AetState_FailLoop)
 				aet_state = AetState_FailOut;
 		}
 
@@ -251,27 +256,22 @@ bool TechZoneManager::CheckNoteHit(int32_t hit_state, TechZone** ptz)
 void TechZoneManager::Parse(PVGamePvData* pv_data)
 {
 	// NOTE: Parse DSC
-	std::vector<diva::TargetGroup> targets;
-	GetPvScriptTargets(pv_data, &targets, &tech_zones);
+	script::GetTechZoneRegions(pv_data, &tech_zones);
 
 	// NOTE: Resolve technical zone's notes
 	for (TechZone& zone : tech_zones)
 	{
 		size_t target_index = 0;
-		int64_t last_target_time = 0;
-		int32_t last_target_type = -1;
-		for (diva::TargetGroup& grp : targets)
+		for (PvDscTargetGroup& grp : pv_data->targets)
 		{
-			// NOTE: Check if the current note is a mini chainslide note.
-			int32_t type = grp.targets[0].type;
-			int64_t time_offset = grp.targets[0].spawn_time - last_target_time;
-			bool chainslide = (type == 15 || type == 16);
-			bool is_mini_slide = (type == last_target_type) && chainslide && time_offset <= MINI_SLIDE_THRESHOLD;
+			if (grp.target_count < 1)
+				continue;
 
-			if (!is_mini_slide)
+			PvDscTarget& tgt = grp.targets[0];
+			if (!tgt.slide_chain || (tgt.slide_chain && tgt.slide_chain_start))
 			{
-				int64_t min_time = grp.targets[0].hit_time - TIMING_WINDOW;
-				int64_t max_time = grp.targets[0].hit_time + TIMING_WINDOW;
+				int64_t min_time = grp.hit_time - TIMING_WINDOW;
+				int64_t max_time = grp.hit_time + TIMING_WINDOW;
 				if (min_time >= zone.start_time && max_time <= zone.end_time)
 				{
 					if (zone.first_note_index == -1)
@@ -283,9 +283,6 @@ void TechZoneManager::Parse(PVGamePvData* pv_data)
 
 				target_index++;
 			}
-
-			last_target_time = grp.targets[0].spawn_time;
-			last_target_type = grp.targets[0].type;
 		}
 	}
 }

@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <detours.h>
+#include <stdio.h>
 #include "tech_zone.h"
 #include "thirdparty/toml.hpp"
 
@@ -52,14 +53,33 @@ HOOK(bool, __fastcall, TaskPvGameDisp, 0x1405DA090, uint64_t a1)
 	return originalTaskPvGameDisp(a1);
 }
 
-HOOK(uint64_t, __fastcall, PVGamePvDataInit, 0x14024E3B0, PVGamePvData* pv_data, uint64_t a2, char a3)
+// NOTE: Not sure what class this belongs to, that's why I named it TaskPvSomething
+//       It's a pretty deep call from TaskPvInit.
+HOOK(bool, __fastcall, TaskPvSomethingInit, 0x15067B560, int64_t a1, int64_t a2, int64_t a3, int64_t a4)
 {
-	uint64_t ret = originalPVGamePvDataInit(pv_data, a2, a3);
-
 	if (ShouldEnableTechZones())
-		zone_mgr.Parse(pv_data);
+	{
+		int8_t* pv = *reinterpret_cast<int8_t**>(a1);
+		PVGamePvData* pv_data = reinterpret_cast<PVGamePvData*>(pv + 200);
 
-	return ret;
+		// NOTE: Get states before and after the call, to check if they've changed and not
+		//       accidentally call the loading function twice
+		int32_t state = *reinterpret_cast<int32_t*>(a1 + 8);
+		bool ret = originalTaskPvSomethingInit(a1, a2, a3, a4);
+		int32_t next_state = *reinterpret_cast<int32_t*>(a1 + 8);
+
+		if (state != next_state)
+		{
+			// NOTE: The DSC file is read in state 4, however the targets are only populated in state 21.
+			//
+			if (state == 21)
+				zone_mgr.Parse(pv_data);
+		}
+
+		return ret;
+	}
+
+	return originalTaskPvSomethingInit(a1, a2, a3, a4);
 }
 
 HOOK(uint64_t, __fastcall, PVGamePvDataCtrl, 0x14024EB50, PVGamePvData* pv_data, float a2, int64_t a3, char a4)
@@ -144,7 +164,7 @@ extern "C"
 		INSTALL_HOOK(TaskPvGameCtrl);
 		INSTALL_HOOK(TaskPvGameDest);
 		INSTALL_HOOK(TaskPvGameDisp);
-		INSTALL_HOOK(PVGamePvDataInit);
+		INSTALL_HOOK(TaskPvSomethingInit);
 		INSTALL_HOOK(PVGamePvDataCtrl);
 		INSTALL_HOOK(GetHitState);
 	}

@@ -1,8 +1,34 @@
 #pragma once
 
+#include "diva.h"
+
 // NOTE: Some information were taken from ReDIVA. Thank you, Koren!
 //		 https://github.com/korenkonder/ReDIVA/blob/master/src/ReDIVA/pv_game/pv_game_pv_data.hpp
 //
+struct PvDscTarget
+{
+	int32_t type;
+	diva::vec2 pos;
+	diva::vec2 start_pos;
+	float amplitude;
+	int32_t frequency;
+	bool slide_chain_start;
+	bool slide_chain_end;
+	bool slide_chain_left;
+	bool slide_chain_right;
+	bool slide_chain;
+};
+
+struct PvDscTargetGroup
+{
+	int32_t target_count;
+	PvDscTarget targets[4];
+	int32_t field_94;
+	int64_t spawn_time;
+	int64_t hit_time;
+	bool slide_chain;
+};
+
 struct PVGamePvData
 {
 	uint8_t gap0[8];
@@ -48,7 +74,7 @@ struct PVGamePvData
 	uint8_t gap2C4E0;
 	unsigned __int8 unsigned___int82C4E1;
 	int32_t targets_remaining;
-	uint8_t gap2C4E8[24];
+	prj::vector<PvDscTargetGroup> targets;
 	size_t target_index;
 	float float2C508;
 	char char2C50C;

@@ -2,6 +2,7 @@
 
 #include <string>
 #include <string_view>
+#include <vector>
 #include <map>
 #include <stdint.h>
 #include "Helpers.h"
@@ -78,6 +79,9 @@ namespace prj
 
 	using string = std::basic_string<char, std::char_traits<char>, Allocator<char>>;
 	using string_view = std::basic_string_view<char, std::char_traits<char>>;
+
+	template <typename T>
+	using vector = std::vector<T, Allocator<T>>;
 }
 
 namespace diva
