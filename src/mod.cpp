@@ -152,6 +152,15 @@ static void Initialize()
 		1973610232
 	);
 
+	// X
+	zone_mgr.AddStyle(
+		14029020,
+		14029021,
+		14028020,
+		14028050,
+		1973610232
+	);
+
 	LoadSettings();
 }
 

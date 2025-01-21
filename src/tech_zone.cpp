@@ -213,11 +213,17 @@ void TechZoneManager::Disp()
 			args.res = 14;
 			args.color = tech_zone->failed ? 0xFF7F7F7F : 0xFFFFFFFF;
 
-			// NOTE: The F-style AET is HDTV720, not HDTV1080.
+			// NOTE: The F-style AET is HDTV720
 			if (aet_style == AetStyle_F)
 			{
 				args.pos.x *= 1.5f;
 				args.pos.y *= 1.5f;
+			}
+			// NOTE: The X-style AET is 1280x728
+			else if (aet_style == AetStyle_X)
+			{
+				args.pos.x *= 1.5f;
+				args.pos.y *= 1.48351648f;
 			}
 
 			int32_t number = tech_zone->GetRemaining();
