@@ -204,7 +204,7 @@ void TechZoneManager::Disp()
 		{
 			CustomFontArgs args;
 			args.sprite_id = style->font_spr_id;
-			args.glyph_size = { 30.0f, 32.0f };
+			args.glyph_size = { 60.0f, 64.0f };
 			args.size = { 45.0f, 48.0f };
 			args.pos = it->second.position;
 			args.index = 0;
